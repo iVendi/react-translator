@@ -1,0 +1,25 @@
+{
+  "name": "translator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/core": "^7.16.12",
+    "@babel/generator": "^7.16.8",
+    "@babel/parser": "^7.16.12",
+    "@babel/plugin-syntax-jsx": "^7.16.7",
+    "@babel/preset-react": "^7.16.7",
+    "@babel/traverse": "^7.16.10",
+    "@babel/types": "^7.16.8",
+    "@emotion/is-prop-valid": "^1.1.1",
+    "deasync": "^0.1.24",
+    "fast-glob": "^3.2.11",
+    "inquirer": "^8.2.0",
+    "lodash": "^4.17.21"
+  }
+}
