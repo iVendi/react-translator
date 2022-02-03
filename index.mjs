@@ -1,4 +1,4 @@
-import { promises as fs } from "fs";
+import fs from "fs-extra";
 import * as parser from "@babel/parser";
 import traverse from "@babel/traverse";
 import generate from "@babel/generator";
@@ -17,7 +17,8 @@ function startsWithCapital(word = "a") {
 (async function () {
   const componentBase = "/Users/iv0697/Code/DealerPlatform/src/components/";
   const globBase = componentBase + "*";
-  const translationBase = "/Users/iv0697/Code/DealerPlatform/public/locales/en";
+  const translationBase =
+    "/Users/iv0697/Code/DealerPlatform/public/static/locales/en";
 
   const only = [
     // Add top level component directories here to only process that folder e.g.
@@ -290,8 +291,8 @@ function startsWithCapital(word = "a") {
             chalk.green("Translated:", filePath.replace(componentBase, ""))
           );
 
-          await fs.writeFile(filePath, output.code, "utf-8");
-          await fs.writeFile(
+          await fs.outputFile(filePath, output.code, "utf-8");
+          await fs.outputFile(
             path.join(translationBase, `${namespace}.json`),
             JSON.stringify(translations, null, "    "),
             "utf-8"

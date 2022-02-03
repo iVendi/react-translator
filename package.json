@@ -20,6 +20,7 @@
     "chalk": "^5.0.0",
     "deasync": "^0.1.24",
     "fast-glob": "^3.2.11",
+    "fs-extra": "^10.0.0",
     "inquirer": "^8.2.0",
     "lodash": "^4.17.21",
     "stopword": "^1.0.11"
