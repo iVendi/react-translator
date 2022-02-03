@@ -8,6 +8,7 @@ import path from "path";
 import isPropValid from "@emotion/is-prop-valid";
 import FastGlob from "fast-glob";
 import chalk from "chalk";
+import stopword from "stopword";
 
 function startsWithCapital(word = "a") {
   return word.charAt(0) === word.charAt(0).toUpperCase();
@@ -37,7 +38,6 @@ function startsWithCapital(word = "a") {
     for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
       const filePath = files[fileIndex];
       const code = await fs.readFile(filePath, "utf-8");
-      console.log("Processing:", filePath.replace(componentBase, ""));
 
       try {
         const ast = parser.parse(code, {
@@ -48,12 +48,23 @@ function startsWithCapital(word = "a") {
         let isClassComp = false;
         let name = "";
 
+        // const isReact = ast.program.body.some((n) => {
+        //   return n.source?.value === "react";
+        // });
+
+        // if (!isReact) {
+        //   continue;
+        // }
+
         traverse.default(ast, {
           enter(nodePath) {
-            // TODO: skip translated files
-            // if (nodePath.isImportDeclaration()) {
-            //   console.log(nodePath.node);
-            // }
+            // Skip translated files
+            if (
+              nodePath.isImportDeclaration() &&
+              nodePath.node.source.value === "react-i18next"
+            ) {
+              throw new Error("Already translated");
+            }
 
             // Get name of component (used as key)
             if (
@@ -102,7 +113,7 @@ function startsWithCapital(word = "a") {
           enter(nodePath) {
             // Translate JSX text
             if (nodePath.isJSXText()) {
-              const indentifier = _.snakeCase(nodePath.node.value);
+              const indentifier = _.snakeCase(nodePath.node.value.trim());
 
               if (
                 nodePath.node.value.trim() !== "" &&
@@ -122,7 +133,7 @@ function startsWithCapital(word = "a") {
 
             // Translate JSX props
             if (nodePath.isStringLiteral()) {
-              const indentifier = _.snakeCase(nodePath.node.value);
+              const indentifier = _.snakeCase(nodePath.node.value.trim());
 
               if (types.isJSXAttribute(nodePath.parent)) {
                 if (
