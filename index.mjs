@@ -8,32 +8,45 @@ import path from "path";
 import isPropValid from "@emotion/is-prop-valid";
 import FastGlob from "fast-glob";
 import chalk from "chalk";
-import stopword from "stopword";
 
 function startsWithCapital(word = "a") {
   return word.charAt(0) === word.charAt(0).toUpperCase();
 }
 
+function mockTranslateDeep(obj, prefix) {
+  return _.transform(obj, function (result, value, key) {
+    // transform to a new object
+
+    result[key] = _.isObject(value)
+      ? mockTranslateDeep(value, prefix)
+      : `${prefix} ${value}`;
+  });
+}
+
+const isMultiWord = (str) =>
+  str.trim() !== "" && str.includes(" ") && /[a-z]+(?:\s[a-z]+)+/i.test(str);
+
 (async function () {
   const componentBase = "/Users/iv0697/Code/DealerPlatform/src/components/";
   const globBase = componentBase + "*";
   const translationBase =
-    "/Users/iv0697/Code/DealerPlatform/public/static/locales/en";
+    "/Users/iv0697/Code/DealerPlatform/public/static/locales";
+  const altLocales = ["de"];
 
   const only = [
     // Add top level component directories here to only process that folder e.g.
-    // "AddCustomer",
+    // "/Customer",
   ];
   const dirs = (await FastGlob(globBase, { onlyDirectories: true })).filter(
     (dir) => !only.length || only.some((o) => dir.includes(o))
   );
+
   let hookErrors = [];
 
   for (let dirIndex = 0; dirIndex < dirs.length; dirIndex++) {
     const dirPath = dirs[dirIndex];
     const namespace = path.basename(dirPath);
     const files = await FastGlob(dirPath + "/**/*.js");
-
     const translations = {};
 
     for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
@@ -48,14 +61,17 @@ function startsWithCapital(word = "a") {
         let hasTranslations = false;
         let isClassComp = false;
         let name = "";
+        // let needsObeserverUpdate =
+        //   code.includes("observer") && !code.includes("class ");
+        // let needsObserverForHookImport = false;
 
-        // const isReact = ast.program.body.some((n) => {
-        //   return n.source?.value === "react";
-        // });
+        const isReact = ast.program.body.some((n) => {
+          return n.source?.value === "react";
+        });
 
-        // if (!isReact) {
-        //   continue;
-        // }
+        if (!isReact) {
+          continue;
+        }
 
         traverse.default(ast, {
           enter(nodePath) {
@@ -68,12 +84,11 @@ function startsWithCapital(word = "a") {
             }
 
             // Get name of component (used as key)
+            const classList = ["PureComponent", "React", "Component"];
             if (
               nodePath.isClassDeclaration() &&
-              (nodePath.node.superClass?.object?.name === "React" ||
-                nodePath.node.superClass?.object?.name === "Component" ||
-                nodePath.node.superClass?.name === "React" ||
-                nodePath.node.superClass?.name === "Component")
+              (classList.includes(nodePath.node.superClass?.object?.name) ||
+                classList.includes(nodePath.node.superClass?.name))
             ) {
               isClassComp = true;
               name = nodePath.node.id.name;
@@ -112,6 +127,29 @@ function startsWithCapital(word = "a") {
 
         traverse.default(ast, {
           enter(nodePath) {
+            // if (needsObeserverUpdate) {
+            //   if (
+            //     nodePath.isCallExpression() &&
+            //     nodePath.node.callee?.name === "observer"
+            //   ) {
+            //     needsObserverForHookImport = true;
+            //     nodePath.replaceWith(
+            //       types.callExpression(
+            //         types.identifier("hookSafeObserver"),
+            //         nodePath.node.arguments || []
+            //       )
+            //     );
+            //   }
+
+            //   // Remove import
+            //   if (
+            //     nodePath.isImportSpecifier() &&
+            //     nodePath.node.imported?.name === "observer"
+            //   ) {
+            //     nodePath.remove();
+            //   }
+            // }
+
             // Translate JSX text
             if (nodePath.isJSXText()) {
               const indentifier = _.snakeCase(nodePath.node.value.trim());
@@ -136,13 +174,47 @@ function startsWithCapital(word = "a") {
             if (nodePath.isStringLiteral()) {
               const indentifier = _.snakeCase(nodePath.node.value.trim());
 
+              if (
+                types.isConditionalExpression(nodePath.parent) &&
+                types.isJSXExpressionContainer(
+                  nodePath.parentPath.parentPath
+                ) &&
+                isMultiWord(nodePath.node.value)
+              ) {
+                hasTranslations = true;
+                _.set(
+                  translations,
+                  `${name}.${indentifier}`,
+                  nodePath.node.value.trim()
+                );
+
+                nodePath.replaceWith(
+                  isClassComp
+                    ? types.callExpression(
+                        types.memberExpression(
+                          types.memberExpression(
+                            types.thisExpression(),
+                            types.identifier("props"),
+                            false
+                          ),
+                          types.identifier("t"),
+                          false
+                        ),
+                        [types.stringLiteral(`${name}.${indentifier}`)]
+                      )
+                    : types.callExpression(types.identifier("t"), [
+                        types.stringLiteral(`${name}.${indentifier}`),
+                      ])
+                );
+              }
+
               if (types.isJSXAttribute(nodePath.parent)) {
-                if (
-                  isPropValid.default(nodePath.parent.name?.name) ||
-                  nodePath.node.value.trim() === "" ||
-                  !nodePath.node.value.includes(" ") // Will miss single word strings
-                )
-                  return;
+                const shouldTranslate =
+                  (isPropValid.default(nodePath.parent.name?.name) ||
+                    nodePath.parent.name?.name === "text") &&
+                  isMultiWord(nodePath.node.value);
+
+                if (!shouldTranslate) return;
 
                 hasTranslations = true;
                 _.set(
@@ -152,18 +224,20 @@ function startsWithCapital(word = "a") {
                 );
 
                 if (isClassComp) {
-                  types.jSXExpressionContainer(
-                    types.callExpression(
-                      types.memberExpression(
+                  nodePath.replaceWith(
+                    types.jSXExpressionContainer(
+                      types.callExpression(
                         types.memberExpression(
-                          types.thisExpression(),
-                          types.identifier("props"),
+                          types.memberExpression(
+                            types.thisExpression(),
+                            types.identifier("props"),
+                            false
+                          ),
+                          types.identifier("t"),
                           false
                         ),
-                        types.identifier("t"),
-                        false
-                      ),
-                      [types.stringLiteral(`${name}.${indentifier}`)]
+                        [types.stringLiteral(`${name}.${indentifier}`)]
+                      )
                     )
                   );
                 } else {
@@ -258,7 +332,7 @@ function startsWithCapital(word = "a") {
           exit(nodePath) {
             if (!hasTranslations) return;
 
-            // Add react-i18next import
+            // Add react-i18next import ** observerForHooks
             if (nodePath.isProgram()) {
               const identifier = types.identifier(
                 `{${isClassComp ? "withTranslation" : "useTranslation"}}`
@@ -270,6 +344,23 @@ function startsWithCapital(word = "a") {
                 types.stringLiteral("react-i18next")
               );
               nodePath.unshiftContainer("body", importDeclaration);
+
+              // if (needsObserverForHookImport) {
+              //   const ofhLoc = componentBase + "Common/hookSafeObserver.js";
+              //   const importLoc = path.relative(path.dirname(filePath), ofhLoc);
+
+              //   nodePath.unshiftContainer(
+              //     "body",
+              //     types.importDeclaration(
+              //       [
+              //         types.importDefaultSpecifier(
+              //           types.identifier("hookSafeObserver")
+              //         ),
+              //       ],
+              //       types.stringLiteral(importLoc)
+              //     )
+              //   );
+              // }
             }
           },
         });
@@ -293,10 +384,23 @@ function startsWithCapital(word = "a") {
 
           await fs.outputFile(filePath, output.code, "utf-8");
           await fs.outputFile(
-            path.join(translationBase, `${namespace}.json`),
+            path.join(translationBase, "en", `${namespace}.json`),
             JSON.stringify(translations, null, "    "),
             "utf-8"
           );
+
+          for (let al = 0; al < altLocales.length; al++) {
+            const locale = altLocales[al];
+            await fs.outputFile(
+              path.join(translationBase, locale, `${namespace}.json`),
+              JSON.stringify(
+                mockTranslateDeep(translations, locale),
+                null,
+                "    "
+              ),
+              "utf-8"
+            );
+          }
         }
       } catch (e) {
         console.log(
@@ -308,7 +412,7 @@ function startsWithCapital(word = "a") {
 
   if (hookErrors.length) {
     console.log(
-      chalk.yellow("\n\nThe following files may contain hook errors:\n")
+      chalk.yellow("\n\nThe following files may contain observer errors:\n")
     );
     hookErrors.forEach((f) =>
       console.warn(chalk.yellow("File:", f.replace(componentBase, "")))
