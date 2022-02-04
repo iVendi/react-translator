@@ -9,6 +9,8 @@ import isPropValid from "@emotion/is-prop-valid";
 import FastGlob from "fast-glob";
 import chalk from "chalk";
 
+const shuffle = (str) => [...str].sort(() => Math.random() - 0.5).join("");
+
 function startsWithCapital(word = "a") {
   return word.charAt(0) === word.charAt(0).toUpperCase();
 }
@@ -19,7 +21,7 @@ function mockTranslateDeep(obj, prefix) {
 
     result[key] = _.isObject(value)
       ? mockTranslateDeep(value, prefix)
-      : `${prefix} ${value}`;
+      : `${prefix} ${shuffle(value)}`;
   });
 }
 
@@ -35,7 +37,7 @@ const isMultiWord = (str) =>
 
   const only = [
     // Add top level component directories here to only process that folder e.g.
-    // "/Customer",
+    // "/Reporting",
   ];
   const dirs = (await FastGlob(globBase, { onlyDirectories: true })).filter(
     (dir) => !only.length || only.some((o) => dir.includes(o))
@@ -394,7 +396,7 @@ const isMultiWord = (str) =>
             await fs.outputFile(
               path.join(translationBase, locale, `${namespace}.json`),
               JSON.stringify(
-                mockTranslateDeep(translations, locale),
+                mockTranslateDeep(translations, "german"),
                 null,
                 "    "
               ),
