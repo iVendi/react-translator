@@ -49,7 +49,7 @@ const isMultiWord = (str) =>
     const dirPath = dirs[dirIndex];
     const namespace = path.basename(dirPath);
     const files = await FastGlob(dirPath + "/**/*.js");
-    const translations = {};
+    let translations = {};
 
     for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
       const filePath = files[fileIndex];
@@ -210,10 +210,11 @@ const isMultiWord = (str) =>
                 );
               }
 
+              const propWhitelist = ["text", "placeholder"];
               if (types.isJSXAttribute(nodePath.parent)) {
                 const shouldTranslate =
                   (isPropValid.default(nodePath.parent.name?.name) ||
-                    nodePath.parent.name?.name === "text") &&
+                    propWhitelist.includes(nodePath.parent.name?.name)) &&
                   isMultiWord(nodePath.node.value);
 
                 if (!shouldTranslate) return;
@@ -385,13 +386,39 @@ const isMultiWord = (str) =>
           );
 
           await fs.outputFile(filePath, output.code, "utf-8");
+
+          const transPath = path.join(
+            translationBase,
+            "en",
+            `${namespace}.json`
+          );
+          const exists = fs.existsSync(transPath);
+
+          if (exists) {
+            translations = _.merge(translations, fs.readJSONSync(transPath));
+          }
+
           await fs.outputFile(
-            path.join(translationBase, "en", `${namespace}.json`),
+            transPath,
             JSON.stringify(translations, null, "    "),
             "utf-8"
           );
 
           for (let al = 0; al < altLocales.length; al++) {
+            const transAltPath = path.join(
+              translationBase,
+              "en",
+              `${namespace}.json`
+            );
+            const existsAlt = fs.existsSync(transPath);
+
+            if (existsAlt) {
+              translations = _.merge(
+                translations,
+                fs.readJSONSync(transAltPath)
+              );
+            }
+
             const locale = altLocales[al];
             await fs.outputFile(
               path.join(translationBase, locale, `${namespace}.json`),
