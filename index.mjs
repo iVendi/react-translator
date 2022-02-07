@@ -43,12 +43,14 @@ const isMultiWord = (str) =>
   const dirs = (await FastGlob(globBase, { onlyDirectories: true })).filter(
     (dir) => !only.length || only.some((o) => dir.endsWith(o))
   );
+  // const dirs = ["test"];
 
   let hookErrors = [];
 
   for (let dirIndex = 0; dirIndex < dirs.length; dirIndex++) {
     const dirPath = dirs[dirIndex];
     const namespace = path.basename(dirPath);
+    // const files = ["/Users/iv0697/Code/translator/Test.jsx"];
     const files = await FastGlob(dirPath + "/**/*.js");
     let translations = {};
 
@@ -63,6 +65,7 @@ const isMultiWord = (str) =>
         });
         let hasTranslations = false;
         let isClassComp = false;
+        let HocOrHookAdded = false;
         let name = "";
         // let needsObeserverUpdate =
         //   code.includes("observer") && !code.includes("class ");
@@ -212,11 +215,13 @@ const isMultiWord = (str) =>
               }
 
               const propWhitelist = ["text", "placeholder", "label"];
+
               if (types.isJSXAttribute(nodePath.parent)) {
                 const shouldTranslate =
                   (!isPropValid.default(nodePath.parent.name?.name) &&
                     isMultiWord(nodePath.node.value)) ||
-                  propWhitelist.includes(nodePath.parent.name?.name);
+                  (propWhitelist.includes(nodePath.parent.name?.name) &&
+                    nodePath.node.value.trim());
 
                 if (!shouldTranslate) return;
 
@@ -264,6 +269,7 @@ const isMultiWord = (str) =>
                 (nodePath.isFunctionDeclaration() &&
                   nodePath.node.id?.name === name))
             ) {
+              if (HocOrHookAdded) return;
               if (types.isBlockStatement(nodePath.node.body)) {
                 nodePath.node.body.body.unshift(
                   types.variableDeclaration("const", [
@@ -282,6 +288,7 @@ const isMultiWord = (str) =>
                     ),
                   ])
                 );
+                HocOrHookAdded = true;
               } else {
                 nodePath.replaceWith(
                   types.arrowFunctionExpression(
@@ -311,12 +318,13 @@ const isMultiWord = (str) =>
                     false
                   )
                 );
-                nodePath.skip();
+                HocOrHookAdded = true;
               }
             }
 
             // Wrap with HOC (class components)
             if (isClassComp && nodePath.isExportDefaultDeclaration()) {
+              if (HocOrHookAdded) return;
               nodePath.replaceWith(
                 types.exportDefaultDeclaration(
                   types.callExpression(
@@ -327,7 +335,7 @@ const isMultiWord = (str) =>
                   )
                 )
               );
-              nodePath.skip();
+              HocOrHookAdded = true;
             }
           },
         });

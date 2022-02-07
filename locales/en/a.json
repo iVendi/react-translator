@@ -1,0 +1,12 @@
+{
+    "ProductsTables": {
+        "lender": "Lender",
+        "product_name": "Product Name",
+        "apr": "APR %",
+        "total_amount_payable": "Total Amount Payable",
+        "agreement_term": "Agreement Term",
+        "monthly_payments": "Monthly Payments",
+        "": "",
+        "view": "View"
+    }
+}
