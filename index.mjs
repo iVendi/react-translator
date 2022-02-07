@@ -39,8 +39,9 @@ const isMultiWord = (str) =>
     // Add top level component directories here to only process that folder e.g.
     // "/Reporting",
   ];
+
   const dirs = (await FastGlob(globBase, { onlyDirectories: true })).filter(
-    (dir) => !only.length || only.some((o) => dir.includes(o))
+    (dir) => !only.length || only.some((o) => dir.endsWith(o))
   );
 
   let hookErrors = [];
@@ -210,12 +211,12 @@ const isMultiWord = (str) =>
                 );
               }
 
-              const propWhitelist = ["text", "placeholder"];
+              const propWhitelist = ["text", "placeholder", "label"];
               if (types.isJSXAttribute(nodePath.parent)) {
                 const shouldTranslate =
-                  (!isPropValid.default(nodePath.parent.name?.name) ||
-                    propWhitelist.includes(nodePath.parent.name?.name)) &&
-                  isMultiWord(nodePath.node.value);
+                  (!isPropValid.default(nodePath.parent.name?.name) &&
+                    isMultiWord(nodePath.node.value)) ||
+                  propWhitelist.includes(nodePath.parent.name?.name);
 
                 if (!shouldTranslate) return;
 
