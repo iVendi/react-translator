@@ -37,7 +37,7 @@ const isMultiWord = (str) =>
 
   const only = [
     // Add top level component directories here to only process that folder e.g.
-    // "/Reporting",
+    // "/Customer",
   ];
 
   const dirs = (await FastGlob(globBase, { onlyDirectories: true })).filter(
@@ -292,7 +292,7 @@ const isMultiWord = (str) =>
               } else {
                 nodePath.replaceWith(
                   types.arrowFunctionExpression(
-                    [],
+                    nodePath.node.params || [],
                     types.blockStatement(
                       [
                         types.variableDeclaration("const", [
