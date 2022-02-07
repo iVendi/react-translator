@@ -213,7 +213,7 @@ const isMultiWord = (str) =>
               const propWhitelist = ["text", "placeholder"];
               if (types.isJSXAttribute(nodePath.parent)) {
                 const shouldTranslate =
-                  (isPropValid.default(nodePath.parent.name?.name) ||
+                  (!isPropValid.default(nodePath.parent.name?.name) ||
                     propWhitelist.includes(nodePath.parent.name?.name)) &&
                   isMultiWord(nodePath.node.value);
 
