@@ -8,6 +8,11 @@ import path from "path";
 import isPropValid from "@emotion/is-prop-valid";
 import FastGlob from "fast-glob";
 import chalk from "chalk";
+import { words } from "popular-english-words";
+
+const popularWords = Object.fromEntries(
+  words.getMostPopular(1000).map((w) => [w, true])
+);
 
 const shuffle = (str) => [...str].sort(() => Math.random() - 0.5).join("");
 
@@ -25,10 +30,17 @@ function mockTranslateDeep(obj, prefix) {
   });
 }
 
-const isMultiWord = (str) =>
+const isAllowedWord = (str = "") =>
+  ["px ", "sans-serif", "rtl -"].every((nw) => !str.toLowerCase().includes(nw));
+
+const isMultiWord = (str = "") =>
   str.trim() !== "" && str.includes(" ") && /[a-z]+(?:\s[a-z]+)+/i.test(str);
 
+const containsCommonWord = (str = "") =>
+  str.split(" ").some((w) => popularWords[w.toLowerCase()]);
+
 (async function () {
+  const aggressive = false; // Translates all string containing common words, more false positives.
   const componentBase = "/Users/iv0697/Code/DealerPlatform/src/components/";
   const globBase = componentBase + "*";
   const translationBase =
@@ -178,6 +190,7 @@ const isMultiWord = (str) =>
 
             // Translate JSX props
             if (nodePath.isStringLiteral()) {
+              let translated = false;
               const indentifier = _.snakeCase(nodePath.node.value.trim());
 
               if (
@@ -187,6 +200,7 @@ const isMultiWord = (str) =>
                 ) &&
                 isMultiWord(nodePath.node.value)
               ) {
+                translated = true;
                 hasTranslations = true;
                 _.set(
                   translations,
@@ -233,6 +247,7 @@ const isMultiWord = (str) =>
                 if (!shouldTranslate) return;
 
                 hasTranslations = true;
+                translated = true;
                 _.set(
                   translations,
                   `${name}.${indentifier}`,
@@ -265,6 +280,45 @@ const isMultiWord = (str) =>
                     )
                   );
                 }
+              }
+
+              if (
+                aggressive &&
+                !translated &&
+                !types.isMemberExpression(nodePath.parent) &&
+                !types.isBinaryExpression(nodePath.parent) &&
+                isMultiWord(nodePath.node.value) &&
+                containsCommonWord(nodePath.node.value) &&
+                isAllowedWord(nodePath.node.value)
+              ) {
+                hasTranslations = true;
+                _.set(
+                  translations,
+                  `${name}.${indentifier}`,
+                  nodePath.node.value.trim()
+                );
+                nodePath.replaceWith(
+                  isClassComp
+                    ? types.expressionStatement(
+                        types.callExpression(
+                          types.memberExpression(
+                            types.memberExpression(
+                              types.thisExpression(),
+                              types.identifier("props"),
+                              false
+                            ),
+                            types.identifier("t"),
+                            false
+                          ),
+                          [types.stringLiteral(`${name}.${indentifier}`)]
+                        )
+                      )
+                    : types.expressionStatement(
+                        types.callExpression(types.identifier("t"), [
+                          types.stringLiteral(`${name}.${indentifier}`),
+                        ])
+                      )
+                );
               }
             }
 
