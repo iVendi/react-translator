@@ -214,7 +214,14 @@ const isMultiWord = (str) =>
                 );
               }
 
-              const propWhitelist = ["text", "placeholder", "label"];
+              const propWhitelist = [
+                "text",
+                "placeholder",
+                "label",
+                "title",
+                "submitLabel",
+                "alt",
+              ];
 
               if (types.isJSXAttribute(nodePath.parent)) {
                 const shouldTranslate =
