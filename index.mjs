@@ -228,7 +228,7 @@ const containsCommonWord = (str = "") =>
                 );
               }
 
-              const propWhitelist = [
+              const allowedProps = [
                 "text",
                 "placeholder",
                 "label",
@@ -236,13 +236,15 @@ const containsCommonWord = (str = "") =>
                 "submitLabel",
                 "alt",
               ];
+              const disallowedProps = ["featureName", "interactionName"];
 
               if (types.isJSXAttribute(nodePath.parent)) {
                 const shouldTranslate =
                   (!isPropValid.default(nodePath.parent.name?.name) &&
                     isMultiWord(nodePath.node.value)) ||
-                  (propWhitelist.includes(nodePath.parent.name?.name) &&
-                    nodePath.node.value.trim());
+                  (allowedProps.includes(nodePath.parent.name?.name) &&
+                    nodePath.node.value.trim() &&
+                    !disallowedProps.includes(nodePath.parent.name?.name));
 
                 if (!shouldTranslate) return;
 
