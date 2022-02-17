@@ -240,11 +240,11 @@ const containsCommonWord = (str = "") =>
 
               if (types.isJSXAttribute(nodePath.parent)) {
                 const shouldTranslate =
-                  (!isPropValid.default(nodePath.parent.name?.name) &&
+                  ((!isPropValid.default(nodePath.parent.name?.name) &&
                     isMultiWord(nodePath.node.value)) ||
-                  (allowedProps.includes(nodePath.parent.name?.name) &&
-                    nodePath.node.value.trim() &&
-                    !disallowedProps.includes(nodePath.parent.name?.name));
+                    (allowedProps.includes(nodePath.parent.name?.name) &&
+                      nodePath.node.value.trim())) &&
+                  !disallowedProps.includes(nodePath.parent.name?.name);
 
                 if (!shouldTranslate) return;
 
